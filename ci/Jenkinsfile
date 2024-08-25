@@ -1,14 +1,38 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(
+            name: 'TARGET',
+            choices: ['market_data_simple_subscription',
+             'cross_exchange_arbitrage',
+             'custom_service_class',
+             'enable_library_logging',
+             'execution_management_advanced_request',
+             'execution_management_advanced_subscription',
+             'execution_management_simple_request',
+             'execution_management_simple_subscription',
+             'fix_advanced',
+             'fix_simple',
+             'generic_private_request',
+             'generic_public_request',
+             'market_data_advanced_request',
+             'market_data_advanced_subscription',
+             'market_data_simple_request',
+             'market_making',
+             'override_exchange_url_at_runtime',
+             'utility_set_timer'],
+            description: 'Выберите целевой исполняемый файл для сборки'
+        )
+    }
+
     stages {
         stage('Prepare Environment') {
             steps {
                 script {
                     // Устанавливаем переменные
                     env.BUILD_DIR = "example/build"
-                    env.TARGET = 'market_data_simple_subscription'
-                    env.TARGET_PATH = "./${BUILD_DIR}/${TARGET}"
+                    env.TARGET_PATH = "./${BUILD_DIR}/${params.TARGET}"
                 }
             }
         }
@@ -18,7 +42,7 @@ pipeline {
                 // Создаем папку для сборки, если она не существует
                 sh """
                 if [ ! -d "${BUILD_DIR}" ]; then
-                    mkdir ${BUILD_DIR}
+                    mkdir -p ${BUILD_DIR}
                 fi
                 """
             }
@@ -39,7 +63,7 @@ pipeline {
                 // Сборка проекта с использованием CMake
                 sh """
                 cd ${BUILD_DIR}
-                cmake --build . --target ${TARGET}
+                cmake --build . --target ${params.TARGET}
                 """
             }
         }
@@ -49,9 +73,8 @@ pipeline {
                 script {
                     // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
                     sh """
-                    if [ -f "example/build/src/${TARGET}/${TARGET}" ]; then
+                    if [ -f "example/build/src/${params.TARGET}/${params.TARGET}" ]; then
                         echo "Приложение скомпилировано ${TARGET_PATH}..."
-                        
                     else
                         echo "Ошибка: файл ${TARGET_PATH} не найден."
                         exit 1
@@ -71,4 +94,3 @@ pipeline {
         }
     }
 }
-

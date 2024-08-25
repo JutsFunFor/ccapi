@@ -6,21 +6,10 @@ pipeline {
             steps {
                 script {
                     // Устанавливаем переменные
-                    env.BUILD_DIR = 'build'
+                    env.BUILD_DIR = 'example/src'
                     env.TARGET = 'market_data_simple_subscription'
-                    env.TARGET_PATH = "./src/${env.TARGET}"
+                    env.TARGET_PATH = "./${env.BUILD_DIR}/${env.TARGET}"
                 }
-            }
-        }
-
-        stage('Create Build Directory') {
-            steps {
-                // Создаем папку для сборки, если она не существует
-                sh """
-                if [ ! -d "${BUILD_DIR}" ]; then
-                    mkdir ${BUILD_DIR}
-                fi
-                """
             }
         }
 
@@ -29,7 +18,7 @@ pipeline {
                 // Переходим в папку сборки и запускаем CMake для генерации Makefile
                 sh """
                 cd ${BUILD_DIR}
-                cmake ..
+                sudo cmake ..
                 """
             }
         }
@@ -39,8 +28,7 @@ pipeline {
                 // Сборка проекта с использованием CMake
                 sh """
                 cd ${BUILD_DIR}
-                cd ..
-                cmake --build . --target ${TARGET}
+                sudo cmake --build . --target ${TARGET}
                 """
             }
         }
@@ -50,7 +38,7 @@ pipeline {
                 script {
                     // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
                     sh """
-                    if [ -f "${TARGET_PATH}" ]; then
+                    if [ -f "${TARGET_PATH}/${env.TARGET}" ]; then
                         echo "Запуск ${TARGET_PATH}..."
                         ${TARGET_PATH}
                     else

@@ -1,0 +1,79 @@
+pipeline {
+    agent any
+
+    parameters {
+        choice(
+            name: 'TARGET',
+            choices: ['single_order_execution', 'spot_market_making'],
+            description: 'Выберите целевой исполняемый файл для сборки'
+        )
+    }
+
+    stages {
+        stage('Prepare Environment') {
+            steps {
+                script {
+                    // Устанавливаем переменные
+                    env.BUILD_DIR = "app/build"
+                    env.TARGET_PATH = "./${BUILD_DIR}/${params.TARGET}"
+                }
+            }
+        }
+
+        stage('Create Build Directory') {
+            steps {
+                // Создаем папку для сборки, если она не существует
+                sh """
+                if [ ! -d "${BUILD_DIR}" ]; then
+                    mkdir -p ${BUILD_DIR}
+                fi
+                """
+            }
+        }
+
+        stage('Run CMake') {
+            steps {
+                // Переходим в папку сборки и запускаем CMake для генерации Makefile
+                sh """
+                cd ${BUILD_DIR}
+                cmake ..
+                """
+            }
+        }
+
+        stage('Build Project') {
+            steps {
+                // Сборка проекта с использованием CMake
+                sh """
+                cd ${BUILD_DIR}
+                cmake --build . --target ${params.TARGET}
+                """
+            }
+        }
+
+        stage('Run Executable') {
+            steps {
+                script {
+                    // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
+                    sh """
+                    if [ -f "app/build/src/${params.TARGET}/${params.TARGET}" ]; then
+                        echo "Приложение скомпилировано ${TARGET_PATH}..."
+                    else
+                        echo "Ошибка: файл ${TARGET_PATH} не найден."
+                        exit 1
+                    fi
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Сборка завершилась с ошибкой.'
+        }
+        success {
+            echo 'Сборка и запуск завершены успешно.'
+        }
+    }
+}

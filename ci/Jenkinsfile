@@ -1,0 +1,75 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Prepare Environment') {
+            steps {
+                script {
+                    // Устанавливаем переменные
+                    env.BUILD_DIR = 'build'
+                    env.TARGET = 'market_data_simple_subscription'
+                    env.TARGET_PATH = "./src/${env.TARGET}"
+                }
+            }
+        }
+
+        stage('Create Build Directory') {
+            steps {
+                // Создаем папку для сборки, если она не существует
+                sh """
+                if [ ! -d "${BUILD_DIR}" ]; then
+                    mkdir ${BUILD_DIR}
+                fi
+                """
+            }
+        }
+
+        stage('Run CMake') {
+            steps {
+                // Переходим в папку сборки и запускаем CMake для генерации Makefile
+                sh """
+                cd ${BUILD_DIR}
+                cmake ..
+                """
+            }
+        }
+
+        stage('Build Project') {
+            steps {
+                // Сборка проекта с использованием CMake
+                sh """
+                cd ${BUILD_DIR}
+                cd ..
+                cmake --build . --target ${TARGET}
+                """
+            }
+        }
+
+        stage('Run Executable') {
+            steps {
+                script {
+                    // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
+                    sh """
+                    if [ -f "${TARGET_PATH}" ]; then
+                        echo "Запуск ${TARGET_PATH}..."
+                        ${TARGET_PATH}
+                    else
+                        echo "Ошибка: файл ${TARGET_PATH} не найден."
+                        exit 1
+                    fi
+                    """
+                }
+            }
+        }
+    }
+
+    post {
+        failure {
+            echo 'Сборка завершилась с ошибкой.'
+        }
+        success {
+            echo 'Сборка и запуск завершены успешно.'
+        }
+    }
+}
+

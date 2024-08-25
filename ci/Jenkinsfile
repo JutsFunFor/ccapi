@@ -6,10 +6,9 @@ pipeline {
             steps {
                 script {
                     // Устанавливаем переменные
-                    env.CMAKE_DIR = 'example/src'
-                    env.BUILD_DIR = "build"
+                    env.BUILD_DIR = "example/build"
                     env.TARGET = 'market_data_simple_subscription'
-                    env.TARGET_PATH = "./${env.CMAKE_DIR}/${env.TARGET}"
+                    env.TARGET_PATH = "./${BUILD_DIR}/${TARGET}"
                 }
             }
         }
@@ -29,7 +28,7 @@ pipeline {
             steps {
                 // Переходим в папку сборки и запускаем CMake для генерации Makefile
                 sh """
-                cd ${CMAKE_DIR}
+                cd ${BUILD_DIR}
                 cmake ..
                 """
             }
@@ -39,7 +38,7 @@ pipeline {
             steps {
                 // Сборка проекта с использованием CMake
                 sh """
-                cd ${CMAKE_DIR}
+                cd ${BUILD_DIR}
                 cmake --build . --target ${TARGET}
                 """
             }

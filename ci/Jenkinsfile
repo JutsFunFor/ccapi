@@ -50,7 +50,7 @@ pipeline {
                 script {
                     // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
                     sh """
-                    if [ -f "example/build/src/${TARGET_PATH}/${TARGET_PATH}" ]; then
+                    if [ -f "example/build/src/${TARGET}/${TARGET}" ]; then
                         echo "Запуск ${TARGET_PATH}..."
                         ${TARGET_PATH}
                     else

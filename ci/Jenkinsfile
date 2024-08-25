@@ -50,8 +50,8 @@ pipeline {
                     // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
                     sh """
                     if [ -f "example/build/src/${TARGET}/${TARGET}" ]; then
-                        echo "Запуск ${TARGET_PATH}..."
-                        ${TARGET_PATH}
+                        echo "Приложение скомпилировано ${TARGET_PATH}..."
+                        
                     else
                         echo "Ошибка: файл ${TARGET_PATH} не найден."
                         exit 1

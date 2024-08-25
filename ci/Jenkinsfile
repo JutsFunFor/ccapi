@@ -18,7 +18,7 @@ pipeline {
                 // Переходим в папку сборки и запускаем CMake для генерации Makefile
                 sh """
                 cd ${BUILD_DIR}
-                cmake ..
+                sudo cmake ..
                 """
             }
         }
@@ -28,7 +28,7 @@ pipeline {
                 // Сборка проекта с использованием CMake
                 sh """
                 cd ${BUILD_DIR}
-                cmake --build . --target ${TARGET}
+                sudo cmake --build . --target ${TARGET}
                 """
             }
         }

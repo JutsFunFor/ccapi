@@ -9,10 +9,8 @@ pipeline {
         )
         choice(
             name: 'TARGET',
-            choices: [],
-            description: 'Выберите целевой исполняемый файл для сборки',
-            // Этот параметр будет динамически обновляться
-            script: 'return params.BUILD_TYPE == "APP" ? ["single_order_execution", "spot_market_making"] : ["market_data_simple_subscription", "cross_exchange_arbitrage", "custom_service_class", "enable_library_logging", "execution_management_advanced_request", "execution_management_advanced_subscription", "execution_management_simple_request", "execution_management_simple_subscription", "fix_advanced", "fix_simple", "generic_private_request", "generic_public_request", "market_data_advanced_request", "market_data_advanced_subscription", "market_data_simple_request", "market_making", "override_exchange_url_at_runtime", "utility_set_timer"]'
+            choices: ['single_order_execution', 'spot_market_making'], // Default choices
+            description: 'Выберите целевой исполняемый файл для сборки'
         )
     }
 
@@ -20,7 +18,41 @@ pipeline {
         stage('Prepare Environment') {
             steps {
                 script {
-                    // Устанавливаем переменные на основе BUILD_TYPE
+                    // Определяем доступные варианты TARGET в зависимости от BUILD_TYPE
+                    def targetChoices = []
+                    if (params.BUILD_TYPE == 'APP') {
+                        targetChoices = ['single_order_execution', 'spot_market_making']
+                    } else if (params.BUILD_TYPE == 'EXAMPLE') {
+                        targetChoices = [
+                            'market_data_simple_subscription',
+                            'cross_exchange_arbitrage',
+                            'custom_service_class',
+                            'enable_library_logging',
+                            'execution_management_advanced_request',
+                            'execution_management_advanced_subscription',
+                            'execution_management_simple_request',
+                            'execution_management_simple_subscription',
+                            'fix_advanced',
+                            'fix_simple',
+                            'generic_private_request',
+                            'generic_public_request',
+                            'market_data_advanced_request',
+                            'market_data_advanced_subscription',
+                            'market_data_simple_request',
+                            'market_making',
+                            'override_exchange_url_at_runtime',
+                            'utility_set_timer'
+                        ]
+                    }
+
+                    // Обновляем параметр TARGET с новыми значениями
+                    properties([
+                        parameters([
+                            choice(name: 'TARGET', choices: targetChoices, description: 'Выберите целевой исполняемый файл для сборки')
+                        ])
+                    ])
+
+                    // Устанавливаем переменные среды
                     env.BUILD_DIR = params.BUILD_TYPE == 'APP' ? "app/build" : "example/build"
                     env.TARGET_PATH = "./${BUILD_DIR}/src/${params.TARGET}/${params.TARGET}"
                 }

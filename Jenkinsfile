@@ -3,65 +3,58 @@ pipeline {
 
     parameters {
         choice(
-            name: 'BUILD_TYPE',
+            name: 'TARGET',
             choices: ['APP', 'EXAMPLE'],
             description: 'Выберите тип сборки'
-        )
-        choice(
-            name: 'TARGET',
-            choices: ['single_order_execution', 'spot_market_making'], // Default choices
-            description: 'Выберите целевой исполняемый файл для сборки'
         )
     }
 
     stages {
-        stage('Prepare Environment') {
+        stage('Choose Specific Target') {
             steps {
                 script {
-                    // Определяем доступные варианты TARGET в зависимости от BUILD_TYPE
-                    def targetChoices = []
-                    if (params.BUILD_TYPE == 'APP') {
-                        targetChoices = ['single_order_execution', 'spot_market_making']
-                    } else if (params.BUILD_TYPE == 'EXAMPLE') {
-                        targetChoices = [
-                            'market_data_simple_subscription',
-                            'cross_exchange_arbitrage',
-                            'custom_service_class',
-                            'enable_library_logging',
-                            'execution_management_advanced_request',
-                            'execution_management_advanced_subscription',
-                            'execution_management_simple_request',
-                            'execution_management_simple_subscription',
-                            'fix_advanced',
-                            'fix_simple',
-                            'generic_private_request',
-                            'generic_public_request',
-                            'market_data_advanced_request',
-                            'market_data_advanced_subscription',
-                            'market_data_simple_request',
-                            'market_making',
-                            'override_exchange_url_at_runtime',
-                            'utility_set_timer'
-                        ]
+                    if (params.TARGET == 'APP') {
+                        env.BUILD_TARGET = input(
+                            message: 'Выберите целевой исполняемый файл для сборки (APP)',
+                            parameters: [
+                                choice(name: 'BUILD_TARGET', choices: ['single_order_execution', 'spot_market_making'], description: 'Целевой файл для сборки')
+                            ]
+                        )
+                    } else if (params.TARGET == 'EXAMPLE') {
+                        env.BUILD_TARGET = input(
+                            message: 'Выберите целевой исполняемый файл для сборки (EXAMPLE)',
+                            parameters: [
+                                choice(name: 'BUILD_TARGET', choices: [
+                                    'market_data_simple_subscription',
+                                    'cross_exchange_arbitrage',
+                                    'custom_service_class',
+                                    'enable_library_logging',
+                                    'execution_management_advanced_request',
+                                    'execution_management_advanced_subscription',
+                                    'execution_management_simple_request',
+                                    'execution_management_simple_subscription',
+                                    'fix_advanced',
+                                    'fix_simple',
+                                    'generic_private_request',
+                                    'generic_public_request',
+                                    'market_data_advanced_request',
+                                    'market_data_advanced_subscription',
+                                    'market_data_simple_request',
+                                    'market_making',
+                                    'override_exchange_url_at_runtime',
+                                    'utility_set_timer'
+                                ], description: 'Целевой файл для сборки')
+                            ]
+                        )
                     }
-
-                    // Обновляем параметр TARGET с новыми значениями
-                    properties([
-                        parameters([
-                            choice(name: 'TARGET', choices: targetChoices, description: 'Выберите целевой исполняемый файл для сборки')
-                        ])
-                    ])
-
-                    // Устанавливаем переменные среды
-                    env.BUILD_DIR = params.BUILD_TYPE == 'APP' ? "app/build" : "example/build"
-                    env.TARGET_PATH = "./${BUILD_DIR}/src/${params.TARGET}/${params.TARGET}"
+                    env.BUILD_DIR = params.TARGET == 'APP' ? "app/build" : "example/build"
+                    env.TARGET_PATH = "./${BUILD_DIR}/src/${env.BUILD_TARGET}/${env.BUILD_TARGET}"
                 }
             }
         }
 
         stage('Create Build Directory') {
             steps {
-                // Создаем папку для сборки, если она не существует
                 sh """
                 if [ ! -d "${BUILD_DIR}" ]; then
                     mkdir -p ${BUILD_DIR}
@@ -72,7 +65,6 @@ pipeline {
 
         stage('Run CMake') {
             steps {
-                // Переходим в папку сборки и запускаем CMake для генерации Makefile
                 sh """
                 cd ${BUILD_DIR}
                 cmake ..
@@ -82,10 +74,9 @@ pipeline {
 
         stage('Build Project') {
             steps {
-                // Сборка проекта с использованием CMake
                 sh """
                 cd ${BUILD_DIR}
-                cmake --build . --target ${params.TARGET}
+                cmake --build . --target ${env.BUILD_TARGET}
                 """
             }
         }
@@ -93,7 +84,6 @@ pipeline {
         stage('Run Executable') {
             steps {
                 script {
-                    // Проверяем, существует ли скомпилированный файл, и если да, запускаем его
                     sh """
                     if [ -f "${TARGET_PATH}" ]; then
                         echo "Приложение скомпилировано ${TARGET_PATH}..."

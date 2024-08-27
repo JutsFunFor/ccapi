@@ -1,39 +1,82 @@
 #include "ccapi_cpp/ccapi_session.h"
+#include <fstream>
+
 namespace ccapi {
-Logger* Logger::logger = nullptr;  // This line is needed.
 class MyEventHandler : public EventHandler {
  public:
+  MyEventHandler(const std::string& fileName) : fileName(fileName) {
+    // Open the CSV file and write the header
+    csvFile.open(fileName);
+    if (csvFile.is_open()) {
+      csvFile << "Exchange,Instrument,Time,Bid Price,Bid Size,Ask Price,Ask Size\n";
+    }
+  }
+
+  ~MyEventHandler() {
+    if (csvFile.is_open()) {
+      csvFile.close();
+    }
+  }
+
   bool processEvent(const Event& event, Session* session) override {
-    if (event.getType() == Event::Type::SUBSCRIPTION_STATUS) {
-      std::cout << "Received an event of type SUBSCRIPTION_STATUS:\n" + event.toStringPretty(2, 2) << std::endl;
-    } else if (event.getType() == Event::Type::SUBSCRIPTION_DATA) {
+    if (event.getType() == Event::Type::SUBSCRIPTION_DATA) {
       for (const auto& message : event.getMessageList()) {
-        std::cout << std::string("Best bid and ask at ") + UtilTime::getISOTimestamp(message.getTime()) + " are:" << std::endl;
+        std::string timestamp = UtilTime::getISOTimestamp(message.getTime());
         for (const auto& element : message.getElementList()) {
-          const std::map<std::string, std::string>& elementNameValueMap = element.getNameValueMap();
-          std::cout << "  " + toString(elementNameValueMap) << std::endl;
+          const auto& elementNameValueMap = element.getNameValueMap();
+          std::string exchange = message.getCorrelationIdList().empty() ? "" : message.getCorrelationIdList().at(0);
+          std::string instrument = message.getInstrument();
+
+          // Write to console
+          std::cout << "Best bid and ask at " << timestamp << " on " << exchange << " for " << instrument << " are:\n";
+          std::cout << "  " << toString(elementNameValueMap) << std::endl;
+
+          // Write to CSV
+          if (csvFile.is_open()) {
+            csvFile << exchange << "," << instrument << "," << timestamp << ","
+                    << elementNameValueMap.at("BID_PRICE") << "," << elementNameValueMap.at("BID_SIZE") << ","
+                    << elementNameValueMap.at("ASK_PRICE") << "," << elementNameValueMap.at("ASK_SIZE") << "\n";
+          }
         }
       }
     }
     return true;
   }
+
+ private:
+  std::ofstream csvFile;
+  std::string fileName;
 };
-} /* namespace ccapi */
+}  // namespace ccapi
+
 using ::ccapi::MyEventHandler;
 using ::ccapi::Session;
 using ::ccapi::SessionConfigs;
 using ::ccapi::SessionOptions;
 using ::ccapi::Subscription;
-using ::ccapi::toString;
+
 int main(int argc, char** argv) {
-  SessionOptions sessionOptions;
-  SessionConfigs sessionConfigs;
-  MyEventHandler eventHandler;
-  Session session(sessionOptions, sessionConfigs, &eventHandler);
-  Subscription subscription("okx", "BTC-USDT", "MARKET_DEPTH");
-  session.subscribe(subscription);
-  std::this_thread::sleep_for(std::chrono::seconds(10));
+  if (argc < 3) {
+    std::cerr << "Usage: " << argv[0] << " <CSV_FILE> <DURATION_IN_SECONDS>\n";
+    return EXIT_FAILURE;
+  }
+
+  std::string fileName = argv[1];
+  int duration = std::stoi(argv[2]);
+
+  ccapi::SessionOptions sessionOptions;
+  ccapi::SessionConfigs sessionConfigs;
+  MyEventHandler eventHandler(fileName);
+  ccapi::Session session(sessionOptions, sessionConfigs, &eventHandler);
+
+  // Subscriptions for multiple exchanges
+  session.subscribe(ccapi::Subscription("okx", "BTC-USDT", "MARKET_DEPTH"));
+  session.subscribe(ccapi::Subscription("binance", "ETH-USDT", "MARKET_DEPTH"));
+
+  // Sleep for the specified duration
+  std::this_thread::sleep_for(std::chrono::seconds(duration));
   session.stop();
-  std::cout << "Bye" << std::endl;
+
+  std::cout << "Data collection completed. Saved to " << fileName << "\n";
   return EXIT_SUCCESS;
 }

@@ -4,7 +4,6 @@
 #include <filesystem>
 #include <vector>
 #include <string>
-#include <iostream>
 
 namespace ccapi {
 Logger* Logger::logger = nullptr;  // This line is needed.
@@ -25,9 +24,7 @@ class MyEventHandler : public EventHandler {
   }
 
   bool processEvent(const Event& event, Session* session) override {
-    if (event.getType() == Event::Type::SUBSCRIPTION_STATUS) {
-      std::cout << "Subscription status event received:\n" + event.toStringPretty(2, 2) << std::endl;
-    } else if (event.getType() == Event::Type::SUBSCRIPTION_DATA) {
+    if (event.getType() == Event::Type::SUBSCRIPTION_DATA) {
       for (const auto& message : event.getMessageList()) {
         std::string exchange = message.getCorrelationIdList().empty() ? "" : message.getCorrelationIdList().at(0);
         std::string instrument = message.getInstrument().empty() ? "UNKNOWN" : message.getInstrument();
@@ -40,7 +37,6 @@ class MyEventHandler : public EventHandler {
         if (!outFile.is_open()) {
           outFile.open(directory + "/" + filename, std::ios_base::app);
           outFile << "Exchange,Instrument,Time,Bid Price,Bid Size,Ask Price,Ask Size\n";
-          std::cout << "Started logging data for " << exchange << " " << instrument << " to " << filename << std::endl;
         }
 
         for (const auto& element : message.getElementList()) {
@@ -82,7 +78,7 @@ int main(int argc, char** argv) {
 
   std::string directory = argv[1];
   int duration = std::stoi(argv[2]);
-
+  
   std::vector<ccapi::Subscription> subscriptions;
 
   // Parse exchanges and instruments from command-line arguments
@@ -93,7 +89,6 @@ int main(int argc, char** argv) {
       std::string exchange = arg.substr(0, pos);
       std::string instrument = arg.substr(pos + 1);
       subscriptions.emplace_back(exchange, instrument, "MARKET_DEPTH");
-      std::cout << "Setting up subscription for " << exchange << " " << instrument << std::endl;
     } else {
       std::cerr << "Invalid format for exchange:instrument pair: " << arg << "\n";
       return EXIT_FAILURE;
@@ -107,7 +102,6 @@ int main(int argc, char** argv) {
 
   // Subscribe to all exchanges and instruments
   session.subscribe(subscriptions);
-  std::cout << "All subscriptions set up successfully. Collecting data...\n";
 
   // Sleep for the specified duration
   std::this_thread::sleep_for(std::chrono::seconds(duration));
